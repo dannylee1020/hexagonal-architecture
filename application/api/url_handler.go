@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -27,7 +26,8 @@ func (u *UrlController) ShortenUrlHandler(w http.ResponseWriter, r *http.Request
 
 	err := utils.ReadJSON(w, r, &input)
 	if err != nil {
-		log.Printf("Error reading request body: %v", err)
+		BadRequestResponse(w, r)
+		return
 	}
 
 	data := models.UrlModel{
@@ -36,7 +36,7 @@ func (u *UrlController) ShortenUrlHandler(w http.ResponseWriter, r *http.Request
 
 	_, err = u.urlService.QueryWithLong(input.LongURL)
 	if err == nil {
-		log.Println("shortened url already exists in the DB")
+		ServerErrorResponse(w, r, "Shortened url already exists in the DB")
 		return
 	}
 
@@ -44,14 +44,14 @@ func (u *UrlController) ShortenUrlHandler(w http.ResponseWriter, r *http.Request
 
 	err = u.urlService.InsertURL(data, hash)
 	if err != nil {
-		log.Println("error inserting records")
+		ServerErrorResponse(w, r, "Error inserting data into DB")
 		return
 	}
 
 	data.ShortURL = hash
 	err = utils.WriteJSON(w, 200, data, nil)
 	if err != nil {
-		log.Println("error writing JSON")
+		ServerErrorResponse(w, r, "Error writing response")
 		return
 	}
 }
@@ -61,13 +61,12 @@ func (u *UrlController) RedirectHandler(w http.ResponseWriter, r *http.Request, 
 
 	urlData, err := u.urlService.QueryWithShort(shortUrl)
 	if err != nil {
-		log.Println("Error querying with short URL")
-		return
+		ServerErrorResponse(w, r, "Error querying data from DB")
 	}
 
 	err = utils.WriteJSON(w, 200, urlData, nil)
 	if err != nil {
-		log.Println("Error writing response")
+		ServerErrorResponse(w, r, "Error writing response")
 		return
 	}
 
